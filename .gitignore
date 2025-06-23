@@ -2,7 +2,7 @@
 backend/env/
 *.pyc
 backend/backend/__pycache__/
-
+env/
 # Django
 *.sqlite3
 
