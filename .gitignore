@@ -3,7 +3,7 @@
 *.pyc
 /backend/backend/__pycache__/
 /env
-
+env/
 # Django
 *.sqlite3
 

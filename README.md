@@ -17,13 +17,15 @@ ClimatWatch est une application web de suivi et d’analyse des données climati
 ### 🔁 1. Cloner le dépôt
 
 ```bash
-git clone https://github.com/ton-pseudo/ClimatWatch.git
+git https://github.com/Nafissatou172/ClimatWatch.git
 cd climawatch
 
 Configuration du backend 
 
 python -m venv env
-env\Scripts\activate       
+env\Scripts\activate // pour Windows
+source env/bin/activate // pour Linux/MacOS
+
 cd backend
 pip install -r requirements.txt
 python manage.py migrate
@@ -32,5 +34,5 @@ python manage.py runserver
 onfiguration du frontend 
 cd frontend
 npm install
-npm start
+npm run dev
 
