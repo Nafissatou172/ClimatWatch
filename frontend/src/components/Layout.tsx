@@ -1,3 +1,4 @@
+// src/components/Layout.tsx
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -44,7 +45,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Contenu', href: '/admin/content', icon: Settings },
   ];
 
-  const navigation = user?.role === 'admin' ? adminNavigation : userNavigation;
+  const navigation = user?.role === 'ADMIN' ? adminNavigation : userNavigation;
 
   return (
     <div className="min-h-screen bg-background">
@@ -107,8 +108,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
               </div>
               <div className="ml-3">
-                <p className="text-base font-medium text-gray-700 font-poppins">{user?.name}</p>
-                <p className="text-sm font-medium text-gray-500 font-poppins capitalize">{user?.role}</p>
+                <p className="text-base font-medium text-gray-700 font-poppins">{user?.username}</p>
+                <p className="text-sm font-medium text-gray-500 font-poppins capitalize">
+                  {user?.role === 'ADMIN' ? 'Administrateur' : 'Utilisateur'}
+                </p>
               </div>
             </div>
           </div>
@@ -154,8 +157,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
               </div>
               <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-700 truncate font-poppins">{user?.name}</p>
-                <p className="text-xs font-medium text-gray-500 capitalize font-poppins">{user?.role}</p>
+                <p className="text-sm font-medium text-gray-700 truncate font-poppins">{user?.username}</p>
+                <p className="text-xs font-medium text-gray-500 capitalize font-poppins">
+                  {user?.role === 'ADMIN' ? 'Administrateur' : 'Utilisateur'}
+                </p>
               </div>
               <button
                 onClick={handleLogout}

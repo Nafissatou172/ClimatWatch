@@ -1,5 +1,6 @@
+// src/components/ProtectedRoute.tsx
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
@@ -12,20 +13,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdmin = false 
 }) => {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <div className="flex justify-center items-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>;
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requireAdmin && user.role !== 'admin') {
+  if (requireAdmin && user.role !== 'ADMIN') {
     return <Navigate to="/dashboard" replace />;
   }
 

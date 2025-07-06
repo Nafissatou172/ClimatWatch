@@ -1,5 +1,30 @@
+// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthContextType } from '../types';
+import axios from 'axios';
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  first_name: string;
+  last_name: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  register: (
+    username: string,
+    email: string,
+    password: string,
+    password2: string,
+    firstName: string,
+    lastName: string
+  ) => Promise<boolean>;
+  isLoading: boolean;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -11,87 +36,99 @@ export const useAuth = () => {
   return context;
 };
 
-// Mock users for demonstration
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Jean Dupont',
-    email: 'jean@example.com',
-    role: 'user',
-    createdAt: new Date('2024-01-01'),
-  },
-  {
-    id: '2',
-    name: 'Marie Admin',
-    email: 'admin@climawatch.com',
-    role: 'admin',
-    createdAt: new Date('2024-01-01'),
-  },
-];
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Configuration de l'instance axios
+  const api = axios.create({
+    baseURL: 'http://localhost:8000/api/auth/',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem('climawatch_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        localStorage.removeItem('climawatch_user');
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          // Vérifier le token et récupérer les infos utilisateur
+          const response = await api.get('users/me/', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          setUser(response.data);
+        } catch (error) {
+          console.error('Erreur de vérification du token:', error);
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    // Mock authentication
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = mockUsers.find(u => u.email === email);
-    if (foundUser && password === 'password123') {
-      setUser(foundUser);
-      localStorage.setItem('climawatch_user', JSON.stringify(foundUser));
+    try {
+      const response = await api.post('login/', { email, password });
+      
+      // Stocker les tokens
+      localStorage.setItem('access_token', response.data.access);
+      localStorage.setItem('refresh_token', response.data.refresh);
+      
+      // Récupérer les infos utilisateur
+      const userResponse = await api.get('users/me/', {
+        headers: {
+          'Authorization': `Bearer ${response.data.access}`,
+        },
+      });
+      
+      setUser(userResponse.data);
       setIsLoading(false);
       return true;
-    }
-    
-    setIsLoading(false);
-    return false;
-  };
-
-  const register = async (name: string, email: string, password: string, role: 'user' | 'admin'): Promise<boolean> => {
-    setIsLoading(true);
-    // Mock registration
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const existingUser = mockUsers.find(u => u.email === email);
-    if (existingUser) {
+    } catch (error) {
+      console.error('Erreur de connexion:', error);
       setIsLoading(false);
       return false;
     }
+  };
 
-    const newUser: User = {
-      id: Date.now().toString(),
-      name,
-      email,
-      role,
-      createdAt: new Date(),
-    };
-
-    mockUsers.push(newUser);
-    setUser(newUser);
-    localStorage.setItem('climawatch_user', JSON.stringify(newUser));
-    setIsLoading(false);
-    return true;
+  const register = async (
+    username: string,
+    email: string,
+    password: string,
+    password2: string,
+    firstName: string,
+    lastName: string
+  ): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      await api.post('register/', {
+        username,
+        email,
+        password,
+        password2,
+        first_name: firstName,
+        last_name: lastName,
+      });
+      setIsLoading(false);
+      return true;
+    } catch (error) {
+      console.error('Erreur d\'inscription:', error);
+      setIsLoading(false);
+      return false;
+    }
   };
 
   const logout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     setUser(null);
-    localStorage.removeItem('climawatch_user');
   };
 
   return (

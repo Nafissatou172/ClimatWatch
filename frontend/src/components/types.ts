@@ -1,11 +1,10 @@
-// src/types/index.ts
 export interface User {
   id: number;
   username: string;
   email: string;
   first_name: string;
   last_name: string;
-  role: string;
+  role: 'ADMIN' | 'MODERATOR' | 'USER';
 }
 
 export interface AuthContextType {
@@ -21,4 +20,25 @@ export interface AuthContextType {
     lastName: string
   ) => Promise<boolean>;
   isLoading: boolean;
+  error: string | null;
+}
+
+export interface ApiError {
+  message: string;
+  status?: number;
+  data?: any;
+}
+
+export interface LoginResponse {
+  access: string;
+  refresh: string;
+}
+
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+  password2: string;
+  first_name: string;
+  last_name: string;
 }
