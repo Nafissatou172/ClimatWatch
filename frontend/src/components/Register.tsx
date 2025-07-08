@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, Cloud, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Register: React.FC = () => {
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
+    firstName: '',
+    lastName: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -19,16 +21,12 @@ export const Register: React.FC = () => {
   });
 
   const { user, register, isLoading } = useAuth();
-
-  if (user) {
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
-  }
+  const navigate = useNavigate();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Password validation
     if (name === 'password') {
       setValidations(prev => ({
         ...prev,
@@ -49,8 +47,8 @@ export const Register: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-      setError('Veuillez remplir tous les champs');
+    if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
+      setError('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
@@ -64,13 +62,25 @@ export const Register: React.FC = () => {
       return;
     }
 
-    // All new registrations are users by default
-    const success = await register(formData.name, formData.email, formData.password, 'user');
-    if (!success) {
-      setError('Cet email est déjà utilisé');
+    const success = await register(
+      formData.username,
+      formData.email,
+      formData.password,
+      formData.confirmPassword,
+      formData.firstName,
+      formData.lastName
+    );
+    
+    if (success) {
+      navigate('/dashboard'); // Redirection après succès
+    } else {
+      setError('Cet email est déjà utilisé ou une erreur est survenue');
     }
   };
 
+  if (user) {
+    return null; // Géré par la redirection dans handleSubmit
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center p-4">
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
@@ -119,27 +129,28 @@ export const Register: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
-                  Nom complet
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
+                  Nom d'utilisateur *
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
-                    id="name"
-                    name="name"
+                    id="username"
+                    name="username"
                     type="text"
-                    value={formData.name}
+                    value={formData.username}
                     onChange={handleInputChange}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 font-poppins"
-                    placeholder="Jean Dupont"
+                    placeholder="Nom d'utilisateur"
                     disabled={isLoading}
+                    required
                   />
                 </div>
               </div>
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
-                  Adresse email
+                  Adresse email *
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -152,13 +163,46 @@ export const Register: React.FC = () => {
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 font-poppins"
                     placeholder="votre@email.com"
                     disabled={isLoading}
+                    required
                   />
                 </div>
               </div>
 
               <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
+                  Prénom
+                </label>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 font-poppins"
+                  placeholder="prénom"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
+                  Nom
+                </label>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 font-poppins"
+                  placeholder="nom"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
-                  Mot de passe
+                  Mot de passe *
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -171,6 +215,7 @@ export const Register: React.FC = () => {
                     className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 font-poppins"
                     placeholder="••••••••"
                     disabled={isLoading}
+                    required
                   />
                   <button
                     type="button"
@@ -197,7 +242,7 @@ export const Register: React.FC = () => {
 
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
-                  Confirmer le mot de passe
+                  Confirmer le mot de passe *
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -210,6 +255,7 @@ export const Register: React.FC = () => {
                     className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 font-poppins"
                     placeholder="••••••••"
                     disabled={isLoading}
+                    required
                   />
                   <button
                     type="button"
