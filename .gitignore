@@ -3,7 +3,10 @@
 *.pyc
 /backend/backend/__pycache__/
 /env
-env/
+
+__pycache__/
+*.pyo
+*.pyd
 # Django
 *.sqlite3
 
