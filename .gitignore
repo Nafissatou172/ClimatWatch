@@ -1,5 +1,7 @@
 # Python
 /backend/env/
+/backend/backend/__pycache__/
+/backend/weather__pycache__/
 *.pyc
 /env
 
