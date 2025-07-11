@@ -1,96 +1,115 @@
-import React, { useState } from 'react';
+import React, { useEffect,useState } from 'react';
 import { Search, Filter, UserPlus, Edit, Trash2, Shield, User } from 'lucide-react';
+import axios from 'axios';
+import { USER} from '../types';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'user' | 'admin';
-  status: 'active' | 'inactive';
-  createdAt: Date;
-  lastLogin: Date;
-}
-
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Jean Dupont',
-    email: 'jean@example.com',
-    role: 'user',
-    status: 'active',
-    createdAt: new Date('2024-01-01'),
-    lastLogin: new Date('2024-01-15'),
-  },
-  {
-    id: '2',
-    name: 'Marie Admin',
-    email: 'admin@climawatch.com',
-    role: 'admin',
-    status: 'active',
-    createdAt: new Date('2024-01-01'),
-    lastLogin: new Date('2024-01-15'),
-  },
-  {
-    id: '3',
-    name: 'Pierre Martin',
-    email: 'pierre@example.com',
-    role: 'user',
-    status: 'active',
-    createdAt: new Date('2024-01-05'),
-    lastLogin: new Date('2024-01-14'),
-  },
-  {
-    id: '4',
-    name: 'Sophie Dubois',
-    email: 'sophie@example.com',
-    role: 'user',
-    status: 'inactive',
-    createdAt: new Date('2024-01-10'),
-    lastLogin: new Date('2024-01-12'),
-  },
-];
 
 export const AdminUsers: React.FC = () => {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<USER[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'admin'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'USER' | 'ADMIN'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('USER');
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+//Connexion à la base de données et utilisation de l'API pour récupérer les utilisateurs  
+  useEffect(() => {
+    axios.get('http://localhost:8000/api/auth/users/', {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}` // si tu utilises JWT
+      }
+    })
+    .then(res => {
+      setUsers(res.data);
+      setLoading(false);
+    })
+    .catch(err => {
+      console.error('Erreur lors de la récupération des utilisateurs', err);
+      setLoading(false);
+    });
+  }, []);
+
+  //Code métier pour les filtres : recherche par role ; statut et recherche d'un utilisateur
+    const filteredUsers = users.filter(user => {
+    const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    
+    const matchesStatus = statusFilter === 'all' ||
+                          (statusFilter === 'active' && user.is_active) ||
+                          (statusFilter === 'inactive' && !user.is_active);
     return matchesSearch && matchesRole && matchesStatus;
+
   });
 
-  const toggleUserStatus = (id: string) => {
-    setUsers(prev => prev.map(user =>
-      user.id === id 
-        ? { ...user, status: user.status === 'active' ? 'inactive' : 'active' as 'active' | 'inactive' }
-        : user
-    ));
-  };
 
-  const deleteUser = (id: string) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
+  const toggleUserStatus = (id: number) => {
+  setUsers(prev =>
+    prev.map(user =>
+      user.id === id
+        ? { ...user, is_active: !user.is_active }
+        : user
+    )
+  );
+};
+
+//Récuperation de l'api delete user 
+  const deleteUser = async (id: number) => {
+  if (window.confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur ?")) {
+    try {
+      await axios.delete(`http://localhost:8000/api/auth/delete-user/${id}/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+
+      // Mise à jour locale après suppression
       setUsers(prev => prev.filter(user => user.id !== id));
+    } catch (error) {
+      console.error("Erreur lors de la suppression de l'utilisateur", error);
+      alert("Erreur lors de la suppression. Veuillez réessayer.");
     }
-  };
+  }
+};
 
-  const toggleUserRole = (id: string) => {
+
+  const toggleUserRole = (id: number) => {
     setUsers(prev => prev.map(user =>
       user.id === id 
-        ? { ...user, role: user.role === 'user' ? 'admin' : 'user' as 'user' | 'admin' }
+        ? { ...user, role: user.role === 'USER' ? 'ADMIN' : 'USER' as 'USER' | 'ADMIN' }
         : user
     ));
   };
+
+//Récuperation de l'api create-user-admin pour permettre a ladmin de creer plusieurs utilisateurs 
+const handleCreateUser = (e: React.FormEvent) => {
+  e.preventDefault();
+
+  axios.post('http://localhost:8000/api/auth/create-user-byadmin/', {
+    username,
+    email,
+    password,
+    role,
+  }, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+    }
+  }).then(res => {
+    alert(res.data.detail);
+    setShowCreateModal(false);
+    // Vous pouvez aussi recharger les utilisateurs
+  }).catch(err => {
+    console.error(err);
+    alert("Erreur lors de la création.");
+  });
+};
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
-      {/* Header */}
+      {/* Header ou entete*/}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -136,8 +155,8 @@ export const AdminUsers: React.FC = () => {
                 className="border border-gray-300 rounded-lg px-3 py-2 font-poppins focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="all">Tous les rôles</option>
-                <option value="user">Utilisateurs</option>
-                <option value="admin">Administrateurs</option>
+                <option value="USER">Utilisateurs</option>
+                <option value="ADMIN">Administrateurs</option>
               </select>
             </div>
             
@@ -154,7 +173,7 @@ export const AdminUsers: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards ou carte statistique*/}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between">
@@ -173,7 +192,7 @@ export const AdminUsers: React.FC = () => {
             <div>
               <p className="text-sm text-gray-500 font-poppins">Actifs</p>
               <p className="text-2xl font-bold text-green-600 font-poppins">
-                {users.filter(u => u.status === 'active').length}
+                {users.filter(u => u.is_active === true).length}
               </p>
             </div>
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -187,7 +206,7 @@ export const AdminUsers: React.FC = () => {
             <div>
               <p className="text-sm text-gray-500 font-poppins">Administrateurs</p>
               <p className="text-2xl font-bold text-purple-600 font-poppins">
-                {users.filter(u => u.role === 'admin').length}
+                {users.filter(u => u.role === 'ADMIN').length}
               </p>
             </div>
             <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
@@ -201,7 +220,7 @@ export const AdminUsers: React.FC = () => {
             <div>
               <p className="text-sm text-gray-500 font-poppins">Inactifs</p>
               <p className="text-2xl font-bold text-red-600 font-poppins">
-                {users.filter(u => u.status === 'inactive').length}
+                {users.filter(u => u.is_active === false).length}
               </p>
             </div>
             <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
@@ -211,7 +230,7 @@ export const AdminUsers: React.FC = () => {
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* Users Table ou liste des users */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -249,7 +268,7 @@ export const AdminUsers: React.FC = () => {
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900 font-poppins">
-                          {user.name}
+                          {user.username}
                         </div>
                         <div className="text-sm text-gray-500 font-poppins">
                           {user.email}
@@ -261,12 +280,12 @@ export const AdminUsers: React.FC = () => {
                     <button
                       onClick={() => toggleUserRole(user.id)}
                       className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full font-poppins transition-colors ${
-                        user.role === 'admin'
+                        user.role === 'ADMIN'
                           ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
                           : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
                       }`}
                     >
-                      {user.role === 'admin' ? (
+                      {user.role === 'ADMIN' ? (
                         <>
                           <Shield className="w-3 h-3 mr-1" />
                           Admin
@@ -283,19 +302,19 @@ export const AdminUsers: React.FC = () => {
                     <button
                       onClick={() => toggleUserStatus(user.id)}
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full font-poppins transition-colors ${
-                        user.status === 'active'
+                        user.is_active === true
                           ? 'bg-green-100 text-green-800 hover:bg-green-200'
                           : 'bg-red-100 text-red-800 hover:bg-red-200'
                       }`}
                     >
-                      {user.status === 'active' ? 'Actif' : 'Inactif'}
+                      {user.is_active === true ? 'Actif' : 'Inactif'}
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-poppins">
-                    {user.createdAt.toLocaleDateString('fr-FR')}
+                    {new Date(user.date_joined).toLocaleDateString('fr-FR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-poppins">
-                    {user.lastLogin.toLocaleDateString('fr-FR')}
+                    {user.last_login ? new Date(user.last_login).toLocaleDateString('fr-FR') : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
@@ -324,13 +343,15 @@ export const AdminUsers: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800 font-poppins mb-4">
               Créer un nouvel utilisateur
             </h3>
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={handleCreateUser}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
                   Nom complet
                 </label>
                 <input
                   type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 font-poppins focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="Jean Dupont"
                 />
@@ -341,6 +362,8 @@ export const AdminUsers: React.FC = () => {
                 </label>
                 <input
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 font-poppins focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="jean@example.com"
                 />
@@ -349,9 +372,12 @@ export const AdminUsers: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2 font-poppins">
                   Rôle
                 </label>
-                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 font-poppins focus:ring-2 focus:ring-primary focus:border-transparent">
-                  <option value="user">Utilisateur</option>
-                  <option value="admin">Administrateur</option>
+                <select 
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 font-poppins focus:ring-2 focus:ring-primary focus:border-transparent">
+                  <option value="USER">Utilisateur</option>
+                  <option value="ADMIN">Administrateur</option>
                 </select>
               </div>
               <div>
@@ -360,6 +386,8 @@ export const AdminUsers: React.FC = () => {
                 </label>
                 <input
                   type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 font-poppins focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="••••••••"
                 />

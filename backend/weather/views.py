@@ -4,11 +4,15 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Ville, WeatherRecord
+from .models import Ville, WeatherRecord, Alerte
 from .serializers import WeatherRecordSerializer
 import os, requests
 from datetime import datetime
-from dotenv import load_dotenv
+from dotenv import load_dotenv 
+from rest_framework import generics, filters
+from .serializers import AlerteSerializer 
+from django.utils.timezone import now
+from django.db.models import Avg, Max 
 load_dotenv()
 
 current_timestamp = datetime.now().isoformat()
@@ -51,3 +55,25 @@ class LiveWeatherView(APIView):
             return Response({
                 "error": f"Impossible de récupérer les données météo pour {ville_nom}"
             }, status=status.HTTP_404_NOT_FOUND)
+
+class AlerteListAPIView(generics.ListAPIView):
+    queryset = Alerte.objects.all().order_by('-date_alerte')
+    serializer_class = AlerteSerializer
+    
+
+class TemperatureStatsAPIView(APIView):
+    def get(self, request):
+        today = now().date()
+        moyenne = (
+            Alerte.objects.filter(date_alerte__date=today)
+            .aggregate(moyenne_temp=Avg('temp'))
+        )
+        max_data = (
+            Alerte.objects.filter(date_alerte__date=today)
+            .aggregate(temperature_max=Max('temp'))
+        )
+        return Response({
+            'date': today,
+            'temperature_moyenne': round(moyenne['moyenne_temp'], 2) if moyenne['moyenne_temp'] else None,
+            'temperature_max': round(max_data['temperature_max'], 2) if max_data['temperature_max'] else None
+        })

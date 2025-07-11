@@ -1,14 +1,5 @@
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: 'ADMIN' | 'MODERATOR' | 'USER';
-}
-
 export interface AuthContextType {
-  user: User | null;
+  user: USER | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (
@@ -41,4 +32,39 @@ export interface RegisterPayload {
   password2: string;
   first_name: string;
   last_name: string;
+}
+
+export interface Alert {
+  id: number;
+  region: string;
+  niveau: string;
+  description: string;
+  is_active: boolean;
+  date_alerte: string;
+  temp : number;
+
+}
+
+export interface USER {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: 'USER' | 'ADMIN' | 'MODERATOR';
+  is_active: boolean;
+  date_joined: string;
+  last_login: string | null;
+}
+
+export interface StationMeteo {
+   ville: string,
+    temperature: number,
+    humidity: number,
+    wind_speed: number,
+    latitude: number,
+    longitude: number,
+    description: string,
+    icon: string,
+    timestamps: string
 }

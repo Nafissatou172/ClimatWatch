@@ -1,18 +1,105 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { Users, AlertTriangle, Thermometer, TrendingUp, Activity } from 'lucide-react';
-import { mockHistoryData, mockAlerts, mockWeatherData } from '../../data/mockData';
+import { mockHistoryData} from '../../data/mockData';
+import  { useEffect, useState } from 'react';
+//import { Plus, Filter, Edit, Trash2, CheckCircle, Clock } from 'lucide-react';
+import axios from 'axios';
+import { Alert} from '../types';
+import {USER} from '../types';
+//import {StationMeteo} from '../types';
+
 
 export const AdminHome: React.FC = () => {
-  const totalUsers = 1247;
-  const activeAlerts = mockAlerts.filter(alert => alert.active).length;
-  const avgTemperature = mockWeatherData.reduce((sum, data) => sum + data.temperature, 0) / mockWeatherData.length;
-  const maxTemperature = Math.max(...mockWeatherData.map(data => data.temperature));
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [users, setUsers] = useState<USER[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [TemperatureMoyenne, setTemperatureMoyenne] = useState();
+  const [TemperatureMax, setTemperatureMax] = useState();
+   const [stations, setStations] = useState<any[]>([]);
 
+  //recuperation api stats pour les alertes
+  useEffect(() => {
+    axios.get('http://localhost:8000/api/alertes/')
+      .then(res => {
+        setAlerts(res.data);
+        //setFiltered(res.data);
+      })
+      .catch(err => console.error('Erreur de récupération des alertes', err));
+  }, []);
+
+  //alerte d'aujourdhui : filtrer par date 
+      const today = new Date().toISOString().split('T')[0]; // Format: "2025-07-10"
+      const alertsOfToday = alerts.filter((alert: any) => {
+        return alert.date_alerte?.startsWith(today); // ou "date" selon ton champ exact
+      });
+
+  //recuperation api stats des users
+useEffect(() => {
+    axios.get('http://localhost:8000/api/auth/users/', {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access_token')}` // si tu utilises JWT
+      }
+    })
+    .then(res => {
+      setUsers(res.data);
+      setLoading(false);
+    })
+    .catch(err => {
+      console.error('Erreur lors de la récupération des utilisateurs', err);
+      setLoading(false);
+    });
+  }, []);
+
+
+  //recuperation api des temperatures moyenne et max par jour
+  useEffect(() => {
+  axios.get('http://localhost:8000/api/temperature_stats/')
+    .then(res => {
+      setTemperatureMoyenne(res.data.temperature_moyenne);
+      setTemperatureMax(res.data.temperature_max);
+    })
+    .catch(err => console.error('Erreur température moyenne :', err));
+}, []);
+
+
+ //recuperation des stations meteorlogiques
+const villes = ['Dakar', 'Thies', 'Fatick'];
+useEffect(() => {
+    const fetchAll = async () => {
+      const allData: any[] = [];
+
+      for (const ville of villes) {
+        try {
+          const res = await axios.get(`http://localhost:8000/api/live-weather/${ville}/`);
+          console.log(`Réponse pour ${ville}`, res.data);
+          if (res.data) allData.push(res.data);
+        } catch (error) {
+          console.error(`Erreur pour ${ville} :`, error);
+        }
+      }
+
+      console.log("Stations récupérées :", allData);
+      setStations(allData);
+      setLoading(false);
+    };
+
+    fetchAll();
+  }, []);
+
+ //transformer une temperature kelvin en celcius
+  function kelvinToCelsius(kelvin: number): string {
+  const celsius = kelvin - 273.15;
+  return celsius.toFixed(1); // Format avec 1 chiffre après la virgule
+}
+
+
+// code couleur selon le niveau d'alerte 
   const alertsByLevel = [
-    { name: 'Vert', value: mockAlerts.filter(a => a.level === 'green').length, color: '#32CD32' },
-    { name: 'Orange', value: mockAlerts.filter(a => a.level === 'orange').length, color: '#F97316' },
-    { name: 'Rouge', value: mockAlerts.filter(a => a.level === 'red').length, color: '#FF6347' },
+    { name: 'normal', value: alertsOfToday.filter(a => a.niveau === 'normal').length, color: '#329ccdff' },
+    { name: 'Inconfortable', value: alertsOfToday.filter(a => a.niveau === 'inconfortable').length, color: '#32CD32' },
+    { name: 'Dangereux', value: alertsOfToday.filter(a => a.niveau === 'dangereux').length, color: '#F97316' },
+    { name: 'Tres dangereux', value: alertsOfToday.filter(a => a.niveau === 'tres_dangereux').length, color: '#FF6347' },
   ];
 
   const temperatureData = mockHistoryData.map(data => ({
@@ -38,7 +125,7 @@ export const AdminHome: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 font-poppins">Utilisateurs totaux</p>
-              <p className="text-3xl font-bold text-primary font-poppins">{totalUsers.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-primary font-poppins">{users.length}</p>
               <p className="text-xs text-green-600 font-poppins">+12% ce mois</p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -51,8 +138,8 @@ export const AdminHome: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 font-poppins">Alertes actives</p>
-              <p className="text-3xl font-bold text-orange-500 font-poppins">{activeAlerts}</p>
-              <p className="text-xs text-orange-600 font-poppins">2 critiques</p>
+              <p className="text-3xl font-bold text-orange-500 font-poppins">{alerts.filter(a => a.is_active === true).length}</p>
+              <p className="text-xs text-orange-600 font-poppins">{alerts.filter(a => a.niveau === 'dangereux').length} dangereux</p>
             </div>
             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
               <AlertTriangle className="w-6 h-6 text-orange-600" />
@@ -64,7 +151,7 @@ export const AdminHome: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 font-poppins">Température moy.</p>
-              <p className="text-3xl font-bold text-red-500 font-poppins">{avgTemperature.toFixed(1)}°C</p>
+              <p className="text-3xl font-bold text-red-500 font-poppins">{TemperatureMoyenne}°C</p>
               <p className="text-xs text-red-600 font-poppins">+2.3°C vs normale</p>
             </div>
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -77,7 +164,7 @@ export const AdminHome: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 font-poppins">Pic de température</p>
-              <p className="text-3xl font-bold text-danger font-poppins">{maxTemperature}°C</p>
+              <p className="text-3xl font-bold text-danger font-poppins">{TemperatureMax}°C</p>
               <p className="text-xs text-red-600 font-poppins">Aujourd'hui</p>
             </div>
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -164,17 +251,17 @@ export const AdminHome: React.FC = () => {
         {/* Weather Stations */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
           <h3 className="text-xl font-semibold text-gray-800 font-poppins mb-4">
-            Stations météorologiques
+            Stations météorologiques du Senegal
           </h3>
           <div className="space-y-4">
-            {mockWeatherData.map((station) => (
-              <div key={station.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            {stations.map((station, idx) => (
+              <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mr-4">
                     <Activity className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-800 font-poppins">{station.location}</p>
+                    <p className="font-semibold text-gray-800 font-poppins">{station.ville}</p>
                     <p className="text-sm text-gray-500 font-poppins">
                       {station.latitude.toFixed(4)}, {station.longitude.toFixed(4)}
                     </p>
@@ -182,7 +269,7 @@ export const AdminHome: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-xl font-bold text-primary font-poppins">
-                    {station.temperature}°C
+                    {kelvinToCelsius(station.temperature)}°C
                   </p>
                   <p className="text-sm text-gray-500 font-poppins">
                     {station.humidity}% humidité
@@ -199,25 +286,25 @@ export const AdminHome: React.FC = () => {
             Alertes récentes
           </h3>
           <div className="space-y-3">
-            {mockAlerts.slice(0, 3).map((alert) => {
+            {alertsOfToday.slice(0, 3).map((alert) => {
               const getAlertColor = (level: string) => {
                 switch (level) {
-                  case 'red': return 'bg-red-100 text-red-800 border-red-200';
-                  case 'orange': return 'bg-orange-100 text-orange-800 border-orange-200';
-                  case 'green': return 'bg-green-100 text-green-800 border-green-200';
+                  case 'tres_dangereux': return 'bg-red-100 text-red-800 border-red-200';
+                  case 'dangereux': return 'bg-orange-100 text-orange-800 border-orange-200';
+                  case 'inconfortable': return 'bg-green-100 text-green-800 border-green-200';
                   default: return 'bg-gray-100 text-gray-800 border-gray-200';
                 }
               };
 
               return (
-                <div key={alert.id} className={`p-3 rounded-lg border ${getAlertColor(alert.level)}`}>
+                <div key={alert.id} className={`p-3 rounded-lg border ${getAlertColor(alert.niveau)}`}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="font-semibold text-sm font-poppins">{alert.title}</p>
-                      <p className="text-xs font-poppins mt-1">{alert.zone}</p>
+                      <p className="font-semibold text-sm font-poppins">{alert.temp}</p>
+                      <p className="text-xs font-poppins mt-1">{alert.region}</p>
                     </div>
                     <span className="text-xs font-poppins">
-                      {alert.date.toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
+                      {new Date(alert.date_alerte).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
                 </div>

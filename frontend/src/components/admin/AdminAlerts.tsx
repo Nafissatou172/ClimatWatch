@@ -1,44 +1,71 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Filter, Edit, Trash2, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import { mockAlerts } from '../../data/mockData';
-import { Alert } from '../../types';
+//import { mockAlerts } from '../../data/mockData';
+import axios from 'axios';
+import { Alert} from '../types';
+
 
 export const AdminAlerts: React.FC = () => {
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [region, setRegion] = useState<string>('all');
 
+ useEffect(() => {
+    axios.get('http://localhost:8000/api/alertes/')
+      .then(res => {
+        setAlerts(res.data);
+        //setFiltered(res.data);
+      })
+      .catch(err => console.error('Erreur de récupération des alertes', err));
+  }, []);
+
+//Filtre les alertes par jour , statut et par region 
+const uniqueRegions = Array.from(new Set(alerts.map(a => a.region)));
   const filteredAlerts = alerts.filter(alert => {
-    if (filter === 'active') return alert.active;
-    if (filter === 'inactive') return !alert.active;
-    return true;
-  });
+  const today = new Date().toISOString().split('T')[0]; // format YYYY-MM-DD
+  const alertDate = new Date(alert.date_alerte).toISOString().split('T')[0];
+
+  const matchStatus =
+    filter === 'active' ? alert.is_active :
+    filter === 'inactive' ? !alert.is_active :
+    true;
+
+  const matchRegion =
+    region === 'all' ? true :
+    alert.region === region;
+
+  const matchDate = alertDate === today;
+
+  return matchStatus && matchRegion && matchDate;
+});
+  
 
   const getAlertIcon = (level: string) => {
     switch (level) {
-      case 'red': return <AlertTriangle className="w-5 h-5 text-red-500" />;
-      case 'orange': return <AlertTriangle className="w-5 h-5 text-orange-500" />;
-      case 'green': return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'tres_dangereux': return <AlertTriangle className="w-5 h-5 text-red-500" />;
+      case 'dangereux': return <AlertTriangle className="w-5 h-5 text-orange-500" />;
+      case 'inconfortable': return <CheckCircle className="w-5 h-5 text-green-500" />;
       default: return <Clock className="w-5 h-5 text-gray-500" />;
     }
   };
 
   const getAlertBadgeColor = (level: string) => {
     switch (level) {
-      case 'red': return 'bg-red-100 text-red-800';
-      case 'orange': return 'bg-orange-100 text-orange-800';
-      case 'green': return 'bg-green-100 text-green-800';
+      case 'tres_dangereux': return 'bg-red-100 text-red-800';
+      case 'dangereux': return 'bg-orange-100 text-orange-800';
+      case 'inconfortable': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const toggleAlertStatus = (id: string) => {
+  const toggleAlertStatus = (id: number) => {
     setAlerts(prev => prev.map(alert =>
-      alert.id === id ? { ...alert, active: !alert.active } : alert
+      alert.id === id ? { ...alert, active: !alert.is_active } : alert
     ));
   };
 
-  const deleteAlert = (id: string) => {
+  const deleteAlert = (id: number) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette alerte ?')) {
       setAlerts(prev => prev.filter(alert => alert.id !== id));
     }
@@ -54,16 +81,16 @@ export const AdminAlerts: React.FC = () => {
               Gestion des alertes
             </h1>
             <p className="text-gray-600 font-poppins">
-              Créez et gérez les alertes climatiques
+              Liste des alertes par jour
             </p>
           </div>
-          <button
+          {/* <button
             onClick={() => setShowCreateModal(true)}
             className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-colors font-poppins"
           >
             <Plus className="w-5 h-5 mr-2" />
             Nouvelle alerte
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -82,20 +109,31 @@ export const AdminAlerts: React.FC = () => {
               <option value="active">Alertes actives</option>
               <option value="inactive">Alertes inactives</option>
             </select>
+
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value as any)}
+              className="border border-gray-300 rounded-lg px-3 py-2 font-poppins focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+            <option value="all">Toutes les régions cibles</option>
+            {uniqueRegions.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
           </div>
           
           <div className="flex items-center space-x-4 text-sm font-poppins">
             <div className="flex items-center">
               <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-              <span>Normale ({alerts.filter(a => a.level === 'green').length})</span>
+              <span>Inconfortable ({alerts.filter(a => a.niveau === 'inconfortable').length})</span>
             </div>
             <div className="flex items-center">
               <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-              <span>Attention ({alerts.filter(a => a.level === 'orange').length})</span>
+              <span>Dangereux ({alerts.filter(a => a.niveau === 'dangereux').length})</span>
             </div>
             <div className="flex items-center">
               <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-              <span>Critique ({alerts.filter(a => a.level === 'red').length})</span>
+              <span>Critique ({alerts.filter(a => a.niveau === 'tres_dangereux').length})</span>
             </div>
           </div>
         </div>
@@ -132,40 +170,40 @@ export const AdminAlerts: React.FC = () => {
                 <tr key={alert.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      {getAlertIcon(alert.level)}
+                      {getAlertIcon(alert.niveau)}
                       <div className="ml-3">
                         <div className="text-sm font-medium text-gray-900 font-poppins">
-                          {alert.title}
+                          {alert.temp} °C
                         </div>
                         <div className="text-sm text-gray-500 font-poppins max-w-xs">
-                          {alert.message.substring(0, 80)}...
+                          {alert.description.substring(0, 80)}...
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full font-poppins ${getAlertBadgeColor(alert.level)}`}>
-                      {alert.level === 'green' && 'Normale'}
-                      {alert.level === 'orange' && 'Attention'}
-                      {alert.level === 'red' && 'Critique'}
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full font-poppins ${getAlertBadgeColor(alert.niveau)}`}>
+                      {alert.niveau === 'inconfortable' && 'Inconfortable'}
+                      {alert.niveau === 'dangereux' && 'Attention , Dangereux'}
+                      {alert.niveau === 'tres_dangereux' && 'Critique , Tres dangereux'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-poppins">
-                    {alert.zone}
+                    {alert.region}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-poppins">
-                    {alert.date.toLocaleDateString('fr-FR')}
+                    {new Date(alert.date_alerte).toLocaleDateString('fr-FR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
                       onClick={() => toggleAlertStatus(alert.id)}
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full font-poppins transition-colors ${
-                        alert.active
+                        alert.is_active
                           ? 'bg-green-100 text-green-800 hover:bg-green-200'
                           : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                       }`}
                     >
-                      {alert.active ? 'Active' : 'Inactive'}
+                      {alert.is_active ? 'Active' : 'Inactive'}
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -254,7 +292,7 @@ export const AdminAlerts: React.FC = () => {
             </form>
           </div>
         </div>
-      )}
+      )} 
     </div>
   );
 };

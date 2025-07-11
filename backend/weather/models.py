@@ -26,5 +26,22 @@ class WeatherRecord(models.Model):
         return f"{self.ville.nom} - {self.timestamp.strftime('%Y-%m-%d %H:%M')} - Temp: {self.temperature}°C"
 
 
+class Alerte(models.Model):
+    NIVEAU_CHOICES = [
+        ('normal', 'Normal'),
+        ('inconfortable', 'Inconfortable'),
+        ('dangereux', 'Dangereux'),
+        ('tres_dangereux', 'Très Dangereux'),
+    ]
+
+    region = models.CharField(max_length=100)
+    niveau = models.CharField(max_length=20, choices=NIVEAU_CHOICES)
+    description = models.TextField()
+    date_alerte = models.DateTimeField(auto_now_add=True)
+    temp = models.FloatField(null=True)
+    is_active = models.BooleanField(default=True)  # ✅ Nouveau champ
+
+    def __str__(self):
+        return f"{self.region} - {self.niveau}"
 
 
