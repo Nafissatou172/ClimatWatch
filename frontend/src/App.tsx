@@ -6,6 +6,8 @@ import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { UserDashboard } from './components/UserDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
+import ArticleDetail from './components/user/ArticleDetail';
+import VideoDetail from './components/user/VideoDetail';
 
 function App() {
   return (
@@ -32,6 +34,10 @@ function App() {
               } 
             />
             <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/articles/:id" element={<ArticleDetail />} />
+            
+            <Route path="/videos/:id" element={<VideoDetail />} />
+
           </Routes>
         </div>
       </Router>

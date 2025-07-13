@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "weather",
     "corsheaders", 
+    "sensibilisation",
+    "videos",
 ]
 
 MIDDLEWARE = [
