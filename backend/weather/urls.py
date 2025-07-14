@@ -1,9 +1,12 @@
 from django.urls import path
-from .views import WeatherByCityView, LiveWeatherView
+from .views import (WeatherByCityView,
+                   LiveWeatherView,
+                   WeatherAlertsView,
+                   CountryWeatherView)
 
 urlpatterns = [
-    #Stockent les données en temps réel dans une base
     path('api/weather/<str:ville_nom>/', WeatherByCityView.as_view(), name='weather-by-city'),
-    #Permet de récuperer les données en temps réel directement via l'api
     path('api/live-weather/<str:ville_nom>/', LiveWeatherView.as_view(), name='live-weather'),
+    path('api/alerts/', WeatherAlertsView.as_view(), name='weather-alerts'),
+    path('api/my-country-weather/', CountryWeatherView.as_view(), name='country-weather'),
 ]

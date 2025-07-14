@@ -51,6 +51,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    'weather.middleware.CountryDetectionMiddleware',
+
 ]
 
 ROOT_URLCONF = "backend.urls"
@@ -134,3 +136,6 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+# Configuration météo
+DEFAULT_WEATHER_COUNTRY = "Senegal"
+DEFAULT_WEATHER_CITY = "Dakar"
